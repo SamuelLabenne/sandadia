@@ -15,7 +15,7 @@ No build step. Upload the whole folder to Cloudflare, not just one file.
 
 ## Photo galleries (Google Drive)
 
-Each page has a gallery that shows every photo in its own Google Drive folder:
+Each page has a gallery that shows every photo and video in its own Google Drive folder:
 
 | Page | Section | Folder ID goes in |
 |---|---|---|
@@ -39,7 +39,10 @@ Both galleries use the same API key.
    (`DRIVE_API_KEY`). Upload once to Cloudflare. After that, changes in the folder show up on
    the site by themselves.
 
-- Photos are shown sorted by file name; rename to `01 …`, `02 …` to set the order.
+- Videos appear as a still frame with a play button and play in Drive's own
+  player. A freshly uploaded video can take a few minutes (longer for big
+  files) before Drive can play it; until then it shows an empty frame.
+- Photos and videos are shown sorted by file name; rename to `01 …`, `02 …` to set the order.
 - A file's Drive *description* (file details panel) becomes its caption.
 - Anything in the folder is public. Removing a file removes it from the site.
 - The key is safe to have in the page source because of the restrictions above.

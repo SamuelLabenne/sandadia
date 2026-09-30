@@ -1,7 +1,7 @@
-// Photo galleries fed by Google Drive folders. Every
-// <section data-drive-folder="FOLDER_ID" hidden> on a page shows the images in
-// that folder, and stays hidden if the folder is empty or can't be read.
-// Setup (folder sharing + API key) is described in README.md.
+// Photo and video galleries fed by Google Drive folders. Every
+// <section data-drive-folder="FOLDER_ID" hidden> on a page shows the images
+// and videos in that folder, and stays hidden if the folder is empty or can't
+// be read. Setup (folder sharing + API key) is described in README.md.
 (() => {
   const DRIVE_API_KEY = 'PASTE_API_KEY_HERE';
 
@@ -9,37 +9,71 @@
     .filter(s => !s.dataset.driveFolder.startsWith('PASTE'));
   if (!sections.length || DRIVE_API_KEY.startsWith('PASTE')) return;
 
-  // Drive serves resized copies, so phones never download the full original.
+  // Drive serves resized copies (and still frames for videos), so phones never
+  // download the full original.
   const src = (id, w) => `https://lh3.googleusercontent.com/d/${id}=w${w}`;
   const fallback = (id, w) => `https://drive.google.com/thumbnail?id=${id}&sz=w${w}`;
-  const withFallback = (img, id, w) => {
-    img.onerror = () => { img.onerror = null; img.src = fallback(id, w); };
+  const withFallback = (img, id, w, onFail) => {
+    img.onerror = () => {
+      img.onerror = onFail || null;
+      img.src = fallback(id, w);
+    };
     img.src = src(id, w);
   };
+  const isVideo = file => file.mimeType.startsWith('video/');
+  const label = file => file.description || (isVideo(file) ? 'Gedeelde video' : 'Gedeelde foto');
+
+  // Pixel size as shown, if Drive knows it.
+  function size(file) {
+    const v = file.videoMediaMetadata;
+    if (v && v.width && v.height) return { w: v.width, h: v.height };
+    const m = file.imageMediaMetadata;
+    if (m && m.width && m.height) {
+      const turned = m.rotation % 2 === 1;
+      return { w: turned ? m.height : m.width, h: turned ? m.width : m.height };
+    }
+    return null;
+  }
 
   const viewer = document.createElement('dialog');
   viewer.className = 'viewer';
-  viewer.innerHTML = '<button type="button">Sluiten</button><img alt="" referrerpolicy="no-referrer"><p hidden></p>';
+  viewer.innerHTML = '<button type="button">Sluiten</button><div class="viewer-media"></div><p hidden></p>';
   document.body.append(viewer);
-  const viewerImg = viewer.querySelector('img');
+  const viewerMedia = viewer.querySelector('.viewer-media');
   const viewerCaption = viewer.querySelector('p');
   viewer.addEventListener('click', () => viewer.close());
-  viewer.addEventListener('close', () => { viewerImg.removeAttribute('src'); });
+  // Emptying the viewer also stops a playing video.
+  viewer.addEventListener('close', () => viewerMedia.replaceChildren());
 
   function open(file) {
-    viewerImg.alt = file.description || 'Gedeelde foto';
-    withFallback(viewerImg, file.id, 2000);
+    if (isVideo(file)) {
+      const s = size(file) || { w: 16, h: 9 };
+      const frame = document.createElement('iframe');
+      frame.src = `https://drive.google.com/file/d/${file.id}/preview`;
+      frame.title = label(file);
+      frame.allow = 'autoplay; fullscreen';
+      frame.allowFullscreen = true;
+      frame.style.aspectRatio = `${s.w} / ${s.h}`;
+      frame.style.width = `min(94vw, calc(80dvh * ${s.w / s.h}))`;
+      viewerMedia.replaceChildren(frame);
+    } else {
+      const img = document.createElement('img');
+      img.alt = label(file);
+      img.referrerPolicy = 'no-referrer';
+      withFallback(img, file.id, 2000);
+      viewerMedia.replaceChildren(img);
+    }
     viewerCaption.textContent = file.description || '';
     viewerCaption.hidden = !file.description;
     viewer.showModal();
   }
 
-  async function listPhotos(folderId) {
+  async function listFiles(folderId) {
     const params = new URLSearchParams({
-      q: `'${folderId}' in parents and mimeType contains 'image/' and trashed = false`,
+      q: `'${folderId}' in parents and (mimeType contains 'image/' or mimeType contains 'video/') and trashed = false`,
       orderBy: 'name',
       pageSize: '200',
-      fields: 'nextPageToken,files(id,description,imageMediaMetadata(width,height,rotation))',
+      fields: 'nextPageToken,files(id,mimeType,description,imageMediaMetadata(width,height,rotation),videoMediaMetadata(width,height))',
       supportsAllDrives: 'true',
       includeItemsFromAllDrives: 'true',
       key: DRIVE_API_KEY,
@@ -60,25 +94,32 @@
     if (!files.length) return;
     const grid = section.querySelector('.grid');
     for (const file of files) {
+      const video = isVideo(file);
       const fig = document.createElement('figure');
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.setAttribute('aria-label', 'Foto vergroten');
+      btn.setAttribute('aria-label', video ? `Video afspelen: ${label(file)}` : 'Foto vergroten');
       const img = document.createElement('img');
-      img.alt = file.description || 'Gedeelde foto';
+      img.alt = label(file);
       img.loading = 'lazy';
       img.decoding = 'async';
       img.referrerPolicy = 'no-referrer';
-      // Reserve roughly the right space before the photo loads.
-      const m = file.imageMediaMetadata;
-      if (m && m.width && m.height) {
-        const turned = m.rotation % 2 === 1;
-        img.width = turned ? m.height : m.width;
-        img.height = turned ? m.width : m.height;
-      }
+      // Reserve roughly the right space before the image loads.
+      const s = size(file);
+      if (s) { img.width = s.w; img.height = s.h; }
       img.addEventListener('load', () => img.classList.add('loaded'));
-      withFallback(img, file.id, 800);
+      // A video Drive is still processing has no still frame yet: show an
+      // empty frame with the play icon instead.
+      withFallback(img, file.id, 800, video ? () => {
+        img.remove();
+        btn.classList.add('no-thumb');
+        if (s) btn.style.aspectRatio = `${s.w} / ${s.h}`;
+      } : null);
       btn.append(img);
+      if (video) {
+        btn.classList.add('is-video');
+        btn.insertAdjacentHTML('beforeend', '<span class="play" aria-hidden="true"></span>');
+      }
       btn.addEventListener('click', () => open(file));
       fig.append(btn);
       if (file.description) {
@@ -92,8 +133,8 @@
   }
 
   for (const section of sections) {
-    listPhotos(section.dataset.driveFolder)
+    listFiles(section.dataset.driveFolder)
       .then(files => render(section, files))
-      .catch(err => console.warn('Fotogalerij niet geladen:', err));
+      .catch(err => console.warn('Galerij niet geladen:', err));
   }
 })();
