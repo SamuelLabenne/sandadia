@@ -1,9 +1,12 @@
 # sandadia
 
 Single-page site that opens when someone scans the QR code on the Sanda Dia mural in Leuven.
+Live at https://sandadia.com (hosted on Cloudflare).
 
 - `index.html` — the whole site. No build step, no dependencies.
-- `images/` — pictures used on the page.
+  The three family photos are currently embedded in the HTML as base64,
+  so the file works on its own when uploaded.
+- `images/` — for new pictures.
 
 ## Local preview
 
@@ -18,5 +21,4 @@ Then visit http://localhost:8000
 ## Notes
 
 - Mobile-first: nearly every visitor arrives from a phone camera, standing at the mural.
-- Content is a placeholder for now; copy and imagery still to come.
 - Keep images small (resize to ~1600px wide, compress) — visitors are often on mobile data.
