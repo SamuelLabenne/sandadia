@@ -3,11 +3,11 @@
 // and videos in that folder, and stays hidden if the folder is empty or can't
 // be read. Setup (folder sharing + API key) is described in README.md.
 (() => {
-  const DRIVE_API_KEY = 'PASTE_API_KEY_HERE';
+  // Set in config.js, which is uploaded to Cloudflare but kept out of git.
+  const DRIVE_API_KEY = window.DRIVE_API_KEY;
 
-  const sections = [...document.querySelectorAll('[data-drive-folder]')]
-    .filter(s => !s.dataset.driveFolder.startsWith('PASTE'));
-  if (!sections.length || DRIVE_API_KEY.startsWith('PASTE')) return;
+  const sections = [...document.querySelectorAll('[data-drive-folder]')];
+  if (!sections.length || !DRIVE_API_KEY) return;
 
   // Drive serves resized copies (and still frames for videos), so phones never
   // download the full original.

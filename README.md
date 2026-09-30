@@ -9,6 +9,8 @@ Live at https://sandadia.com (hosted on Cloudflare).
   linked from the bottom of the homepage.
 - `style.css` — styles shared by both pages.
 - `gallery.js` — the Google Drive photo galleries on both pages.
+- `config.js` — the Google API key. **Not in git** (see `config.example.js`);
+  it only lives in the folder you upload to Cloudflare.
 - `images/` — for new pictures.
 
 No build step. Upload the whole folder to Cloudflare, not just one file.
@@ -35,8 +37,9 @@ Both galleries use the same API key.
    *Credentials → Create credentials → API key*, and edit the key:
    - Application restrictions → **Websites**: `sandadia.com/*` and `www.sandadia.com/*`
    - API restrictions → **Google Drive API** only
-3. Put each folder ID in its page (see table), and the key in `gallery.js`
-   (`DRIVE_API_KEY`). Upload once to Cloudflare. After that, changes in the folder show up on
+3. Put each folder ID in its page (see table). Copy `config.example.js` to
+   `config.js` and put the key in it. Upload once to Cloudflare, including
+   `config.js`. Without `config.js` the galleries simply stay hidden. After that, changes in the folder show up on
    the site by themselves.
 
 - Videos appear as a still frame with a play button and play in Drive's own
@@ -45,7 +48,8 @@ Both galleries use the same API key.
 - Photos and videos are shown sorted by file name; rename to `01 …`, `02 …` to set the order.
 - A file's Drive *description* (file details panel) becomes its caption.
 - Anything in the folder is public. Removing a file removes it from the site.
-- The key is safe to have in the page source because of the restrictions above.
+- The key is visible in the live site's source; the restrictions above are what
+  protect it. It is kept out of this repository anyway.
 
 ## Local preview
 
