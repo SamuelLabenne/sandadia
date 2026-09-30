@@ -161,6 +161,38 @@
     padding-top:.6em;
   }
 
+  /* ---------- drive gallery ---------- */
+  .gallery[hidden]{display:none;}
+  .gallery-intro{margin:0 0 1.5rem;color:var(--ink-dim);}
+  .grid{columns:2;column-gap:.75rem;}
+  @media (min-width:40rem){ .grid{columns:3;column-gap:1rem;} }
+  .grid figure{break-inside:avoid;margin:0 0 .75rem;}
+  .grid button{
+    all:unset;display:block;width:100%;cursor:zoom-in;
+    background:var(--night-2);border:1px solid var(--line);
+  }
+  .grid button:focus-visible{outline:2px solid var(--ochre);outline-offset:3px;}
+  .grid img{display:block;width:100%;height:auto;opacity:0;transition:opacity .6s ease;}
+  .grid img.loaded{opacity:1;}
+  .grid figcaption{margin-top:.4rem;}
+
+  .viewer{
+    border:0;padding:0;margin:auto;background:transparent;
+    max-width:100vw;max-height:100dvh;
+  }
+  .viewer::backdrop{background:rgba(8,12,20,.94);}
+  .viewer img{display:block;max-width:94vw;max-height:88dvh;width:auto;height:auto;margin:0 auto;}
+  .viewer p{
+    font-family:"IBM Plex Mono",monospace;font-size:.72rem;letter-spacing:.05em;
+    color:var(--ink-dim);text-align:center;margin:.75rem 1rem 0;
+  }
+  .viewer button{
+    position:fixed;top:.75rem;right:.75rem;
+    font:500 .75rem "IBM Plex Mono",monospace;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink);background:var(--night-2);border:1px solid var(--line);
+    padding:.6rem .9rem;cursor:pointer;
+  }
+
   /* ---------- closing ---------- */
   .closing{
     padding:clamp(3rem,8vw,5.5rem) 0;
@@ -254,6 +286,14 @@
       </div>
     </section>
 
+    <section class="block gallery" id="fotos" hidden>
+      <p class="marker">Herinneringen</p>
+      <div>
+        <p class="gallery-intro">Foto's gedeeld door familie en vrienden.</p>
+        <div class="grid" id="grid"></div>
+      </div>
+    </section>
+
     <section class="block" style="border-bottom:none;">
       <figure class="tall">
         <div class="frame">
@@ -275,6 +315,103 @@
     <p>Je scande de QR-code bij de muurschildering voor Sanda Dia in Leuven.</p>
   </div>
 </footer>
+
+<dialog class="viewer" id="viewer">
+  <button type="button" id="viewer-close">Sluiten</button>
+  <img id="viewer-img" alt="" referrerpolicy="no-referrer">
+  <p id="viewer-caption" hidden></p>
+</dialog>
+
+<script>
+(() => {
+  // Photos in this Google Drive folder appear in the "Herinneringen" section.
+  // Setup (folder sharing + API key) is described in README.md.
+  const DRIVE_FOLDER_ID = 'PASTE_FOLDER_ID_HERE';
+  const DRIVE_API_KEY = 'PASTE_API_KEY_HERE';
+  if (DRIVE_FOLDER_ID.startsWith('PASTE') || DRIVE_API_KEY.startsWith('PASTE')) return;
+
+  const section = document.getElementById('fotos');
+  const grid = document.getElementById('grid');
+  const viewer = document.getElementById('viewer');
+  const viewerImg = document.getElementById('viewer-img');
+  const viewerCaption = document.getElementById('viewer-caption');
+
+  // Drive serves resized copies, so phones never download the full original.
+  const src = (id, w) => `https://lh3.googleusercontent.com/d/${id}=w${w}`;
+  const fallback = (id, w) => `https://drive.google.com/thumbnail?id=${id}&sz=w${w}`;
+  const withFallback = (img, id, w) => {
+    img.onerror = () => { img.onerror = null; img.src = fallback(id, w); };
+    img.src = src(id, w);
+  };
+
+  async function listPhotos() {
+    const params = new URLSearchParams({
+      q: `'${DRIVE_FOLDER_ID}' in parents and mimeType contains 'image/' and trashed = false`,
+      orderBy: 'name',
+      pageSize: '200',
+      fields: 'nextPageToken,files(id,description,imageMediaMetadata(width,height,rotation))',
+      supportsAllDrives: 'true',
+      includeItemsFromAllDrives: 'true',
+      key: DRIVE_API_KEY,
+    });
+    const files = [];
+    do {
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`);
+      if (!res.ok) throw new Error(`Drive API ${res.status}`);
+      const data = await res.json();
+      files.push(...(data.files || []));
+      if (data.nextPageToken) params.set('pageToken', data.nextPageToken);
+      else params.delete('pageToken');
+    } while (params.has('pageToken'));
+    return files;
+  }
+
+  function open(file) {
+    viewerImg.alt = file.description || 'Gedeelde foto';
+    withFallback(viewerImg, file.id, 2000);
+    viewerCaption.textContent = file.description || '';
+    viewerCaption.hidden = !file.description;
+    viewer.showModal();
+  }
+
+  viewer.addEventListener('click', () => viewer.close());
+  viewer.addEventListener('close', () => { viewerImg.removeAttribute('src'); });
+
+  listPhotos().then(files => {
+    if (!files.length) return;
+    for (const file of files) {
+      const fig = document.createElement('figure');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.setAttribute('aria-label', 'Foto vergroten');
+      const img = document.createElement('img');
+      img.alt = file.description || 'Gedeelde foto';
+      img.loading = 'lazy';
+      img.decoding = 'async';
+      img.referrerPolicy = 'no-referrer';
+      // Reserve roughly the right space before the photo loads.
+      const m = file.imageMediaMetadata;
+      if (m && m.width && m.height) {
+        const turned = m.rotation % 2 === 1;
+        img.width = turned ? m.height : m.width;
+        img.height = turned ? m.width : m.height;
+      }
+      img.addEventListener('load', () => img.classList.add('loaded'));
+      withFallback(img, file.id, 800);
+      btn.append(img);
+      btn.addEventListener('click', () => open(file));
+      fig.append(btn);
+      if (file.description) {
+        const cap = document.createElement('figcaption');
+        cap.textContent = file.description;
+        fig.append(cap);
+      }
+      grid.append(fig);
+    }
+    section.hidden = false;
+  }).catch(err => console.warn('Fotogalerij niet geladen:', err));
+})();
+</script>
 
 </body>
 </html>
