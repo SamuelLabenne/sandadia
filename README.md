@@ -6,7 +6,7 @@ Live at https://sandadia.com (hosted on Cloudflare).
 - `index.html` — homepage (Sanda's story). The three family photos are
   embedded in the HTML as base64.
 - `foundation.html` — Sanda Dia Foundation page (sandadia.com/foundation),
-  linked from the bottom of the homepage.
+  linked from the nav bar at the top of both pages.
 - `style.css` — styles shared by both pages.
 - `gallery.js` — the Google Drive photo galleries on both pages.
 - `config.js` — the Google API key. **Not in git** (see `config.example.js`);
