@@ -71,7 +71,7 @@
   async function listFiles(folderId) {
     const params = new URLSearchParams({
       q: `'${folderId}' in parents and (mimeType contains 'image/' or mimeType contains 'video/') and trashed = false`,
-      orderBy: 'name',
+      orderBy: 'createdTime desc',
       pageSize: '200',
       fields: 'nextPageToken,files(id,mimeType,description,imageMediaMetadata(width,height,rotation),videoMediaMetadata(width,height))',
       supportsAllDrives: 'true',

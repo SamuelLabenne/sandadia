@@ -45,7 +45,7 @@ Both galleries use the same API key.
 - Videos appear as a still frame with a play button and play in Drive's own
   player. A freshly uploaded video can take a few minutes (longer for big
   files) before Drive can play it; until then it shows an empty frame.
-- Photos and videos are shown sorted by file name; rename to `01 …`, `02 …` to set the order.
+- Photos and videos are shown newest first, by when they were added to the folder.
 - A file's Drive *description* (file details panel) becomes its caption.
 - Anything in the folder is public. Removing a file removes it from the site.
 - The key is visible in the live site's source; the restrictions above are what
